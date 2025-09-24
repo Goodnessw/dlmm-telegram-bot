@@ -1,6 +1,6 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
-const { Connection } = require("@solana/web3.js");
+const { Connection, PublicKey } = require("@solana/web3.js"); // ✅ Added PublicKey
 const fetch = require("node-fetch");
 
 // Load from .env
@@ -47,10 +47,12 @@ bot.onText(/\/balance (.+)/, async (msg, match) => {
   const wallet = match[1].trim();
 
   try {
-    const balanceLamports = await connection.getBalance(wallet);
+    const pubkey = new PublicKey(wallet); // ✅ wrap it correctly
+    const balanceLamports = await connection.getBalance(pubkey);
     const balanceSol = balanceLamports / 1e9;
     bot.sendMessage(chatId, `💰 Balance for ${wallet}:\n${balanceSol} SOL`);
   } catch (err) {
+    console.error(err);
     bot.sendMessage(chatId, `❌ Error fetching balance: ${err.message}`);
   }
 });
@@ -66,16 +68,17 @@ bot.onText(/\/lp (.+)/, async (msg, match) => {
     const data = await res.json();
 
     if (!data || data.length === 0) {
-      return bot.sendMessage(chatId, "📭 No LP positions found for this wallet.");
+      return bot.sendMessage(chatId, "📭 No LP positions (transactions) found for this wallet.");
     }
 
-    let response = `📊 LP Data for *${wallet.slice(0, 6)}...${wallet.slice(-4)}*:\n\n`;
+    let response = `📊 LP/Tx Data for *${wallet.slice(0, 6)}...${wallet.slice(-4)}*:\n\n`;
     data.slice(0, 3).forEach((tx, i) => {
       response += `${i + 1}. Tx: \`${tx.signature}\`\n`;
     });
 
     bot.sendMessage(chatId, response, { parse_mode: "Markdown" });
   } catch (err) {
+    console.error(err);
     bot.sendMessage(chatId, "❌ Error fetching LP data. Try again later.");
   }
 });
@@ -101,6 +104,7 @@ bot.onText(/\/history (.+)/, async (msg, match) => {
 
     bot.sendMessage(chatId, response, { parse_mode: "Markdown" });
   } catch (err) {
+    console.error(err);
     bot.sendMessage(chatId, "❌ Error fetching history. Try again later.");
   }
 });
